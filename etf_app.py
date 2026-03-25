@@ -11,7 +11,6 @@ st.set_page_config(page_title="ETF 即時現值精算師", page_icon="⚡", layo
 # 如果你有 Token 可以改用：api = DataLoader(token="")
 FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wMS0yMCAwODo1ODoxNiIsInVzZXJfaWQiOiJ6eGN2NjQxMiIsImVtYWlsIjoiamFjazAwMTQ4MjAwM0BnbWFpbC5jb20iLCJpcCI6IjExNC4xMzcuMTkwLjgifQ.H5tanX21Cz640KnMK0KAuf3RIJjzySMn-GM7awSFL90"
 api = DataLoader()
-api.login_token(token=FINMIND_TOKEN)
 
 st.markdown("""
 <style>

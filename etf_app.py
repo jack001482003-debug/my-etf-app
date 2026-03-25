@@ -4,14 +4,11 @@ from FinMind.data import DataLoader
 import datetime
 
 # --- 1. 頁面設定 ---
-st.set_page_config(page_title="ETF 即時現值精算師", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="ETF 即時複利加碼計算機", page_icon="💰", layout="wide")
 
-# 初始化 FinMind 載入器 (建議申請免費 Token 填入可增加抓取穩定度)
-# api = DataLoader() 
-# 如果你有 Token 可以改用：api = DataLoader(token="")
-FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wMS0yMCAwODo1ODoxNiIsInVzZXJfaWQiOiJ6eGN2NjQxMiIsImVtYWlsIjoiamFjazAwMTQ4MjAwM0BnbWFpbC5jb20iLCJpcCI6IjExNC4xMzcuMTkwLjgifQ.H5tanX21Cz640KnMK0KAuf3RIJjzySMn-GM7awSFL90"
-api = DataLoader()
-
+# 初始化 FinMind (建議在此填入你的 Token)
+FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wMS0yMCAwODo1ODoxNiIsInVzZXJfaWQiOiJ6eGN2NjQxMiIsImVtYWlsIjoiamFjazAwMTQ4MjAwM0BnbWFpbC5jb20iLCJpcCI6IjExNC4xMzcuMTkwLjgifQ.H5tanX21Cz640KnMK0KAuf3RIJjzySMn-GM7awSFL90" 
+api = DataLoader(token=FINMIND_TOKEN)
 
 st.markdown("""
 <style>

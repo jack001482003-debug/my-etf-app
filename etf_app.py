@@ -52,4 +52,67 @@ total_value_now_wan = 0
 
 for name, info in user_inputs.items():
     try:
-        ticker =
+        ticker = yf.Ticker(etf_db[name]["symbol"])
+        price = ticker.fast_info['last_price']
+    except: price = 25.0
+    
+    # 修正市值計算：張數 * 單價(元) * 1000股 / 10000 = 萬元
+    # 例如：10張 * 22.9元 * 1000 / 10000 = 22.9萬
+    mkt_val_wan = (info["owned"] * price * 1000) / 10000
+    ann_div = info["owned"] * (etf_db[name]["div"] * 1000)
+    
+    total_monthly_now += (ann_div / 12)
+    total_value_now_wan += mkt_val_wan
+    
+    for m in etf_db[name]["months"]:
+        calendar[m] += (ann_div / len(etf_db[name]["months"]))
+        
+    results.append({
+        "標的": name,
+        "目前張數": info["owned"],
+        "即時成交價": round(price, 2),
+        "目前市值 (萬)": round(mkt_val_wan, 2),
+        "預估月領": int(ann_div / 12),
+        "配息月份備註": " ".join([f"{m}月" for m in etf_db[name]["months"]])
+    })
+
+# 複利計算
+def run_compounding(inputs, years, ratio):
+    history = []
+    current_shares = {n: i["owned"] for n, i in inputs.items()}
+    for y in range(1, years + 1):
+        year_div = 0
+        current_total_val = 0
+        for n, s in current_shares.items():
+            div = s * (etf_db[n]["div"] * 1000)
+            try: p = yf.Ticker(etf_db[n]["symbol"]).fast_info['last_price']
+            except: p = 25.0
+            current_shares[n] += (div * ratio) / (p * 1000)
+            year_div += div
+            current_total_val += (current_shares[n] * p * 1000) / 10000
+        history.append({"年度": f"第{y}年", "預估月領": int(year_div/12), "總資產(萬)": round(current_total_val, 1)})
+    return history
+
+comp_data = run_compounding(user_inputs, comp_years, reinvest_ratio)
+df_comp = pd.DataFrame(comp_data)
+
+# --- 5. 介面呈現 ---
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.markdown(f'<div class="card"><div style="color:#aaa">目前月領金額</div><div class="highlight">{int(total_monthly_now)} 元</div></div>', unsafe_allow_html=True)
+with c2:
+    st.markdown(f'<div class="card"><div style="color:#aaa">{comp_years}年後月領 (複利)</div><div class="compounding">{df_comp.iloc[-1]["預估月領"]} 元</div></div>', unsafe_allow_html=True)
+with c3:
+    st.markdown(f'<div class="card"><div style="color:#aaa">目前總市值</div><div class="highlight">{round(total_value_now_wan, 2)} 萬元</div></div>', unsafe_allow_html=True)
+
+st.write(f"### 🎯 目標達成率: {round(min(total_monthly_now/target_monthly, 1.0)*100, 1)}%")
+st.progress(min(total_monthly_now/target_monthly, 1.0))
+
+st.subheader("📋 我的資產明細 (金額修正版)")
+st.table(pd.DataFrame(results))
+
+st.subheader(f"📈 {comp_years}年複利成長模擬")
+st.line_chart(df_comp.set_index("年度"))
+
+with st.expander("🔍 查看複利數據表格"):
+    st.dataframe(df_comp, use_container_width=True)

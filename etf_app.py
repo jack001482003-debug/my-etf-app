@@ -7,7 +7,7 @@ import datetime
 st.set_page_config(page_title="ETF 現金流自動連動計算機", page_icon="⚖️", layout="wide")
 
 # Token 設定
-FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wMS0yMCAwODo1ODoxNiIsInVzZXJfaWQiOiJ6eGN2NjQxMiIsImVtYWlsIjoiamFjazAwMTQ4MjAwM0BnbWFpbC5jb20iLCJpcCI6IjExNC4xMzcuMTkwLjgifQ.H5tanX21Cz640KnMK0KAuf3RIJjzySMn-GM7awSFL90" 
+FINMIND_TOKEN = "" 
 api = DataLoader(token=FINMIND_TOKEN)
 
 st.markdown("""
@@ -99,4 +99,57 @@ if total_allocated > total_budget:
 # --- 4. 數據抓取 (其餘保持不變) ---
 def get_live_price(sid):
     try:
-        df = api.taiwan_stock_daily(stock_id=sid, start_date=(
+        df = api.taiwan_stock_daily(stock_id=sid, start_date=(datetime.datetime.now()-datetime.timedelta(days=7)).strftime("%Y-%m-%d"))
+        return float(df['close'].iloc[-1])
+    except: return 25.0
+
+price_map = {n: get_live_price(etf_db[n]["id"]) for n in user_data.keys()}
+
+# --- 5. 計算邏輯 ---
+summary_list = []
+now_monthly_div = 0
+now_total_val_wan = 0
+
+for n, info in user_data.items():
+    p = price_map[n]
+    val_wan = (info["owned"] * p * 1000) / 10000
+    div_m = (info["owned"] * etf_db[n]["div"] * 1000) / 12
+    now_monthly_div += div_m
+    now_total_val_wan += val_wan
+    summary_list.append({"標的": n, "張數": info["owned"], "預計每月投入": info["cash"], "即時市價": p, "市值(萬)": round(val_wan, 2)})
+
+history = []
+temp_shares = {n: info["owned"] for n, info in user_data.items()}
+for y in range(1, comp_years + 1):
+    y_div = 0
+    y_val = 0
+    for _ in range(12): 
+        for n in temp_shares:
+            temp_shares[n] += user_data[n]["cash"] / (price_map[n] * 1000)
+    for n, s in temp_shares.items(): 
+        d = s * (etf_db[n]["div"] * 1000)
+        temp_shares[n] += (d * reinvest_ratio) / (price_map[n] * 1000)
+        y_div += d
+        y_val += (temp_shares[n] * price_map[n] * 1000) / 10000
+    history.append({"年度": f"第 {y} 年", "預估月領": int(y_div/12), "資產總額(萬)": round(y_val, 1)})
+
+df_h = pd.DataFrame(history)
+
+# --- 6. 介面呈現 ---
+st.title("⚖️ ETF 自動分配與複利計畫")
+c1, c2, c3 = st.columns(3)
+with c1: st.markdown(f'<div class="card"><small>目前月領</small><div class="highlight">{int(now_monthly_div)} 元</div></div>', unsafe_allow_html=True)
+with c2: st.markdown(f'<div class="card"><small>{comp_years}年後月領 (含定期定額)</small><div class="compounding">{df_h.iloc[-1]["預估月領"] if not df_h.empty else 0} 元</div></div>', unsafe_allow_html=True)
+with c3: st.markdown(f'<div class="card"><small>目前資產市值</small><div class="highlight">{round(now_total_val_wan, 2)} 萬</div></div>', unsafe_allow_html=True)
+
+st.subheader("📋 現有資產與分配明細")
+st.table(pd.DataFrame(summary_list))
+
+st.subheader(f"📈 {comp_years} 年複利加碼成長曲線")
+st.line_chart(df_h.set_index("年度"))
+
+with st.expander("🔍 查看逐年複利滾存數據明細表"):
+    st.dataframe(df_h, use_container_width=True, hide_index=True)
+
+if st.button("🔄 刷新即時股價"): 
+    st.rerun()
